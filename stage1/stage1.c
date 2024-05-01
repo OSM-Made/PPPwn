@@ -10,7 +10,6 @@
 #include <stddef.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/sockopt.h>
 #include <sys/_lock.h>
 #include <sys/_rwlock.h>
 #include <sys/_callout.h>
@@ -39,6 +38,17 @@ struct llentry {
 };
 
 LIST_HEAD(llentries, llentry);
+
+enum sopt_dir { SOPT_GET, SOPT_SET };
+
+struct	sockopt {
+    enum	sopt_dir sopt_dir; /* is this a get or a set? */
+    int	sopt_level;	/* second arg of [gs]etsockopt */
+    int	sopt_name;	/* third arg of [gs]etsockopt */
+    void* sopt_val;	/* fourth arg of [gs]etsockopt */
+    size_t	sopt_valsize;	/* (almost) fifth arg of [gs]etsockopt */
+    struct	thread* sopt_td; /* calling thread or null if kernel */
+};
 
 static inline uint64_t rdmsr(u_int msr) {
   uint32_t low, high;
