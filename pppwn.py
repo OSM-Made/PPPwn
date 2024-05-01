@@ -741,7 +741,7 @@ class Exploit():
 
         if not corrupted:
             print('[-] Scanning for corrupted object...failed. Please retry.')
-            exit(1)
+            self.run()
 
         print(
             '[+] Scanning for corrupted object...found {}'.format(source_ipv6))
