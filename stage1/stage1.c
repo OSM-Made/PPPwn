@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/sockopt.h>
 #include <sys/_lock.h>
 #include <sys/_rwlock.h>
 #include <sys/_callout.h>
@@ -22,7 +23,7 @@
 // clang-format on
 
 #define STAGE2_PORT 9020
-#define STAGE2_SIZE 0x4000
+#define STAGE2_SIZE 0xC000
 
 #define IFS6_OUT_MSG 0x88
 #define IFS6_OUT_NEIGHBORSOLICIT 0xe0
@@ -73,9 +74,21 @@ static void stage2_proc(void *arg) {
       (void *)kdlsym(ksock_bind);
   int (*ksock_recv)(void *so, void *buf, size_t *len) =
       (void *)kdlsym(ksock_recv);
+  int (*sosetopt)(struct socket* so, struct sockopt* sopt) =
+      (void*)kdlsym(sosetopt);
 
   void *so;
   ksock_create(&so, AF_INET, SOCK_DGRAM, 0);
+
+  int timeout = 1000000 * 3; // timeout value in microseconds
+  struct sockopt sopt;
+  sopt.sopt_dir = SOPT_SET;
+  sopt.sopt_level = SOL_SOCKET;
+  sopt.sopt_name = SO_RCVTIMEO;
+  sopt.sopt_val = (void*)&timeout;
+  sopt.sopt_valsize = sizeof(timeout);
+  sopt.sopt_td = NULL;
+  sosetopt(so, &sopt);
 
   struct sockaddr_in sin = {};
   sin.sin_len = sizeof(sin);
