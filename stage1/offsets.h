@@ -32,7 +32,7 @@
 #define kdlsym_addr_ksock_close 0xffffffff8261bd90
 #define kdlsym_addr_ksock_bind 0xffffffff8261bda0
 #define kdlsym_addr_ksock_recv 0xffffffff8261c100
-#define kdlsym_addr_sosetopt 0xffffffff823F5520
+#define kdlsym_addr_sosetopt 0xffffffff825F5520
 
 #define kdlsym_addr_uart_patch 0xffffffff8372bf60
 #define kdlsym_addr_veri_patch 0xffffffff82826874

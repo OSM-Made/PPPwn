@@ -59,6 +59,19 @@ static inline u_long rcr0(void) {
 static inline void enable_intr(void) { asm volatile("sti"); }
 static inline void disable_intr(void) { asm volatile("cli" ::: "memory"); }
 
+int (*sosetopt)(void* so, struct sockopt* sopt, struct thread* td);
+int so_setsockopt(void* so, int level, int optname, void* optval, size_t optlen)
+{
+    struct sockopt sopt = {};
+    sopt.sopt_dir = SOPT_SET;
+    sopt.sopt_level = level;
+    sopt.sopt_name = optname;
+    sopt.sopt_val = optval;
+    sopt.sopt_valsize = optlen;
+    sopt.sopt_td = NULL;
+    return (sosetopt(so, &sopt, NULL));
+}
+
 static void stage2_proc(void *arg) {
   uint64_t kaslr_offset = (uint64_t)arg;
 
@@ -74,21 +87,13 @@ static void stage2_proc(void *arg) {
       (void *)kdlsym(ksock_bind);
   int (*ksock_recv)(void *so, void *buf, size_t *len) =
       (void *)kdlsym(ksock_recv);
-  int (*sosetopt)(struct socket* so, struct sockopt* sopt) =
-      (void*)kdlsym(sosetopt);
+  sosetopt = (void*)kdlsym(sosetopt);
 
   void *so;
   ksock_create(&so, AF_INET, SOCK_DGRAM, 0);
 
   int timeout = 1000000 * 3; // timeout value in microseconds
-  struct sockopt sopt;
-  sopt.sopt_dir = SOPT_SET;
-  sopt.sopt_level = SOL_SOCKET;
-  sopt.sopt_name = SO_RCVTIMEO;
-  sopt.sopt_val = (void*)&timeout;
-  sopt.sopt_valsize = sizeof(timeout);
-  sopt.sopt_td = NULL;
-  sosetopt(so, &sopt);
+  so_setsockopt(so, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
   struct sockaddr_in sin = {};
   sin.sin_len = sizeof(sin);
