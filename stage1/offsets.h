@@ -12,8 +12,6 @@
 
 #define kdlsym_addr_Xfast_syscall 0xffffffff822001c0
 
-#define kdlsym_addr_printf 0xffffffff822b7a30
-
 #define kdlsym_addr_pppoe_softc_list 0xffffffff843ed9f8
 
 #define kdlsym_addr_cc_cpu 0xffffffff843ad360
