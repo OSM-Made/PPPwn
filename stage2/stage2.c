@@ -20,6 +20,8 @@
 #include "offsets.h"
 // clang-format on
 
+#define STAGE3_SIZE 0x10000
+
 // by OSM-Made
 typedef struct {
   int type;
@@ -90,6 +92,23 @@ static int ksys_write(struct thread *td, int fd, const void *buf,
   return td->td_retval[0];
 }
 
+static int ksys_read(struct thread* td, int fd, void* buf, size_t nbytes) {
+    int(*sys_read)(struct thread*, struct read_args*) =
+        (void*)sysents[SYS_read].sy_call;
+
+    td->td_retval[0] = 0;
+
+    struct read_args uap;
+    uap.fd = fd;
+    uap.buf = buf;
+    uap.nbyte = nbytes;
+    int error = sys_read(td, &uap);
+    if (error)
+        return -error;
+
+    return td->td_retval[0];
+}
+
 static int ksys_close(struct thread *td, int fd) {
   int (*sys_close)(struct thread *, struct close_args *) =
       (void *)sysents[SYS_close].sy_call;
@@ -104,10 +123,27 @@ static int ksys_close(struct thread *td, int fd) {
   return td->td_retval[0];
 }
 
+int ReadFile(struct thread* td, const char* path, void* buf, size_t nbytes)
+{
+    int fd = ksys_open(td, path, O_WRONLY, 0);
+
+    if (!fd)
+        return -1;
+
+    int bytesRead = ksys_read(td, fd, buf, nbytes);
+
+    ksys_close(td, fd);
+
+    return bytesRead;
+}
+
 void stage2(void) {
   uint64_t kaslr_offset = rdmsr(MSR_LSTAR) - kdlsym_addr_Xfast_syscall;
 
   int (*printf)(const char *format, ...) = (void *)kdlsym(printf);
+
+  void** kernel_map = (void**)kdlsym(kernel_map);
+  void* (*kmem_alloc)(void*, uint64_t) = (void*)kdlsym(kmem_alloc);
 
   sysents = (struct sysent *)kdlsym(sysent);
 
@@ -139,13 +175,30 @@ void stage2(void) {
   // Restore write protection
   load_cr0(cr0);
 
+  struct thread* td = curthread;
+
+  // Allocate space for payload.
+  void* stage3 = kmem_alloc(*kernel_map, STAGE3_SIZE);
+
+  // Read the payload from one of the usb devices.
+  int res = ReadFile(td, "/mnt/usb0/payload.bin", stage3, STAGE3_SIZE);
+  if (res < 0)
+      res = ReadFile(td, "/mnt/usb1/payload.bin", stage3, STAGE3_SIZE);
+  if (res < 0)
+      res = ReadFile(td, "/mnt/usb2/payload.bin", stage3, STAGE3_SIZE);
+
+  // Call entry point if we read the payload.
+  if (res)
+  {
+      void (*entry)(void) = (void*)stage3;
+      entry();
+  }
+
   // Send notification
   OrbisNotificationRequest notify = {};
   notify.targetId = -1;
   notify.useIconImageUri = 1;
   memcpy(&notify.message, "PPPwned", 8);
-
-  struct thread *td = curthread;
 
   int fd;
   fd = ksys_open(td, "/dev/notification0", O_WRONLY, 0);

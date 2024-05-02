@@ -16,6 +16,9 @@
 
 #define kdlsym_addr_sysent 0xffffffff83300310
 
+#define kdlsym_addr_kernel_map 0xffffffff84468d48
+#define kdlsym_addr_kmem_alloc 0xffffffff8257be70
+
 #define kdlsym_addr_amd_syscall_patch1 0xffffffff82200490
 #define kdlsym_addr_amd_syscall_patch2 0xffffffff822004b5
 #define kdlsym_addr_amd_syscall_patch3 0xffffffff822004b9
